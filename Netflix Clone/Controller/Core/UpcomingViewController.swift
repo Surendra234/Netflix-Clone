@@ -11,6 +11,7 @@ class UpcomingViewController: UIViewController {
 
     // MARK: - Porperties
     
+    private var isNavigationInProgress = false
     private var titles: [Title] = [Title]()
     
     private let upcomingTable: UITableView = {
@@ -80,18 +81,26 @@ extension UpcomingViewController: UITableViewDataSource {
 extension UpcomingViewController: UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard !isNavigationInProgress else { return} // cehck if is navigation in progress then return and if it's not then excute rest of the code
+        isNavigationInProgress = true
+        
         tableView.deselectRow(at: indexPath, animated: true)
         let title = titles[indexPath.row]
-        guard let titleName = title.original_title ?? title.original_name else { return}
+        guard let titleName = title.original_title ?? title.original_name else {
+            isNavigationInProgress = false // reset the code
+            return
+        }
         
         APICaller.shared.getMovie(with: titleName) { [weak self] result in
+            guard let self = self else { return}
             switch result {
             case .success(let videoElement):
                 
                 DispatchQueue.main.async {
+                    self.isNavigationInProgress = false
                     let vc = TitlePreviewViewController()
                     vc.configure(with: TitlePreviewViewModel(title: titleName, youtubeVideo: videoElement, titleOverview: title.overview ?? ""))
-                    self?.navigationController?.pushViewController(vc, animated: true)
+                    self.navigationController?.pushViewController(vc, animated: true)
                 }
                 
             case .failure(let error):
